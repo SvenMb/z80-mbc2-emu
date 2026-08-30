@@ -6,17 +6,26 @@ This is an emulator to run the ROM and disk images prepared for the Just4Fun's Z
 
 ## What it does?
 
-The emulator is based on the S220718-R240620 version of the Z80-MBC2 firmware. It can run Forth, CP/M 2.2, QP/M 2.71, CP/M 3.0, UCSD Pascal and Collapse OS.
+The emulator is based on the [latest version of the Z80-MBC2 firmware](https://github.com/Ho-Ro/Z80-MBC2/tree/main/IOS-Z80-MBC2-NG). It can run Forth, CP/M 2.2, QP/M 2.71, CP/M 3.0, UCSD Pascal and Collapse OS.
 
 ## Installation
 Extract the [latest zip](https://github.com/ivanizag/z80-mbc2-emu/releases) for Linux, MacOS or Windows.
 
-The Z80-MBC2 SD contents must be extraced to a directory named `sd`. You can run `download.sh` or `download.bat` to automatically download and extract the files from  https://cdn.hackaday.io/files/1599736844284832/SD-S220718-R290823-v2.zip .
+The Z80-MBC2 SD contents must be extraced to a directory named `sd`. You can run `download.sh` or `download.bat` to automatically download and extract the files from  https://cdn.hackaday.io/files/1599736844284832/SD-S220718-R290823-v2.zip . You can update with the (zipped) CP/M3 images from https://github.com/Ho-Ro/Z80-MBC2:
+
+- [A:](https://github.com/Ho-Ro/Z80-MBC2/raw/refs/heads/main/SD/DS2N00.DSK.CPM3.zip) (stable CPM3 system)
+- [A:](https://github.com/Ho-Ro/Z80-MBC2/raw/refs/heads/main/SD/DS2N00.DSK.ZPM3.zip) (experimental ZPM3 system)
+- [N:](https://github.com/Ho-Ro/Z80-MBC2/raw/refs/heads/main/SD/DS2N13.DSK.zip) (BIOS development disk)
 
 ## Usage
 To list the boot options available, execute `z80-mbc2-emu` without parameters:
 ```
-$ ./z80-mbc2-emu 
+$ ./z80-mbc2-emu
+z80-mbc2-emu https://github.com/SvenMb/z80-mbc2-emu
+Emulation of the Z80-MBC2-NG, https://github.com/Ho-Ro/Z80-MBC2
+
+Press ^_^_ (double CTRL UNDERLINE) to return to host
+
 Usage: z80-mbc2-emu IMAGE
   IMAGE can be:
 
@@ -36,13 +45,15 @@ Download the images from https://cdn.hackaday.io/files/1599736844284832/S220718-
 To boot any of the available environments, execute `z80_mbc2_emu` with the code of the environment. For example:
 ```
 $ ./z80-mbc2-emu cpm22
-z80-mbc2-emu https://github.com/ivanizag/iz-cpm
-Emulation of the Z80-MBC2, https://hackaday.io/project/159973
+z80-mbc2-emu https://github.com/SvenMb/z80-mbc2-emu
+Emulation of the Z80-MBC2-NG, https://github.com/Ho-Ro/Z80-MBC2
 
-Press ctrl-c to return to host
+Press ^_^_ (double CTRL UNDERLINE) to return to host
+
+Loading sd/cpm22.bin
 
 
-Z80-MBC2 CP/M 2.2 BIOS - S030818-R140319
+Z80-MBC2 CP/M 2.2 BIOS - S030818-R120923
 CP/M 2.2 Copyright 1979 (c) by Digital Research
 
 A>DIR
@@ -57,17 +68,14 @@ A: ZDE16    COM : ZDENST16 COM
 A>
 ```
 
-Press control-c to exit the emulation.
-
 ## How does it work?
 
-The Z80-MBC2 has a clever design based on a Z80 and a memory IC, both controlled by an Atmega microcontroller. The Atmega is able to put bytes on the data bus and can inject content to the RAM IC by generating code on the fly. It can also respond to IN and OUT ports with 1 bit adressing. It uses that as the interface with the Z80 programs. Via this interface it provides services related with the serial port, the SD card storage, the real time clock, the user led and button, and the GPIO.
+The Z80-MBC2 has a clever design based on a Z80 and a memory IC, both controlled by an Atmega microcontroller. The Atmega is able to put bytes on the data bus and can inject content to the RAM IC by generating code on the fly. It can also respond to IN and OUT ports with 1 bit adressing. It uses that as the interface with the Z80 programs. Via this interface it provides services related with the serial ports, the SD card storage, the real time clock, the user led and button, and the GPIO.
 
 This emulator emulates the Z80 and provides the same services given by the Atmega using the same IN and OUT ports. Instead of the serial port, it uses the terminal. Instead of the SD, it uses a directory named `sd` with the same contents.
 
 ## TODO
 
-- Change the way to exit to host to allow control-c to be used on the emulation.
 - User led, button and GPIO are not connected to anything
 - Save the printer output to a file
 - Tick based interrupts

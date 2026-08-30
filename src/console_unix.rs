@@ -29,6 +29,7 @@ impl Console {
         if let Some(initial) = self.initial_termios {
             let mut new_term = initial.clone();
             new_term.c_iflag &= !(IXON | ICRNL);
+            // &=!ISIG: disable SIGINT (^C), SIGTSTP (^Z), SIGQUIT (^\)
             new_term.c_lflag &= !(ISIG | ECHO | ICANON | IEXTEN);
             new_term.c_cc[VMIN] = if blocking {1} else {0};
             new_term.c_cc[VTIME] = 0;

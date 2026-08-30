@@ -14,13 +14,15 @@ use self::images::*;
 
 // Welcome message
 const WELCOME: &'static str =
-"z80-mbc2-emu https://github.com/ivanizag/iz-cpm
-Emulation of the Z80-MBC2, https://hackaday.io/project/159973
+"z80-mbc2-emu https://github.com/SvenMb/z80-mbc2-emu
+Emulation of the Z80-MBC2-NG, https://github.com/Ho-Ro/Z80-MBC2
 
-Press ctrl-c to return to host";
+Press ^_^_ (double CTRL UNDERLINE) to return to host\n";
 
 
 fn main() {
+    println!("{}", WELCOME);
+
     let image = select_image();
 
     // Init device
@@ -38,7 +40,6 @@ fn main() {
     //machine.trace = true;
 
     // Start the cpu
-    println!("{}", WELCOME);
     let mut ref_time = std::time::Instant::now();
     let mut reg_count = 0 as u64;
 

@@ -9,7 +9,7 @@ use super::console_windows::Console;
 #[cfg(unix)]
 use super::console_unix::Console;
 
-const RAM_SIZE: usize = 128*1024;
+const RAM_SIZE: usize = 512*1024;
 
 const OPCODE_NOP: u8 = 0xff;
 
@@ -89,10 +89,10 @@ impl Mbc2Machine {
             cpm_warm_boot: false,
             spp: false,
             spp_fd: false,
-        
+
             trace: false,
 
-	    verbosity: 0,
+            verbosity: 0,
         }
     }
 
@@ -112,6 +112,18 @@ impl Mbc2Machine {
                 0 => base, //from 0x0_0000 to 0x0_7FFF
                 1 => base + 0x1_0000, //from 0x1_0000 to 0x1_7FFF
                 2 => base + 0x1_8000, //from 0x1_8000 to 0x1_FFFF
+                3 => base + 0x2_0000, //from 0x2_0000 to 0x2_7FFF
+                4 => base + 0x2_8000, //from 0x2_8000 to 0x2_FFFF
+                5 => base + 0x3_0000, //from 0x3_0000 to 0x3_7FFF
+                6 => base + 0x3_8000, //from 0x3_8000 to 0x3_FFFF
+                7 => base + 0x4_0000, //from 0x4_0000 to 0x4_7FFF
+                8 => base + 0x4_8000, //from 0x4_8000 to 0x4_FFFF
+                9 => base + 0x5_0000, //from 0x5_0000 to 0x5_7FFF
+                10 => base + 0x5_8000, //from 0x5_8000 to 0x5_FFFF
+                11 => base + 0x6_0000, //from 0x6_0000 to 0x6_7FFF
+                12 => base + 0x6_8000, //from 0x6_8000 to 0x6_FFFF
+                13 => base + 0x7_0000, //from 0x7_0000 to 0x7_7FFF
+                14 => base + 0x7_8000, //from 0x7_8000 to 0x7_FFFF
                 _ => base, // Default to 0
             }
         }
@@ -215,35 +227,38 @@ impl Machine for Mbc2Machine {
                 //0x12 => { // WRSPP
                 //    // Todo: write value to a printer.out file.
                 //},
+		0x13 => { // SETVECTOR
+		    println!("SETVECTOR << 0x{:02X}", value);
+		},
 		0x20 => { // SIOA TxD
-		    println!("SIOA TxD <<{}", value);
+		    println!("SIOA TxD << 0x{:02X}", value);
 		},
 		0x21 => { // SIOA TxD
-		    println!("SIOB TxD <<{}", value);
+		    println!("SIOB TxD << 0x{:02X}", value);
 		},
 		0x22 => { // SIOA CTRL
-		    println!("SIOA CTRL <<{}", value);
+		    println!("SIOA CTRL << 0x{:02X}", value);
 		},
 		0x23 => { // SIOB CTRL
-		    println!("SIOB CTRL <<{}", value);
+		    println!("SIOB CTRL << 0x{:02X}", value);
 		},
 		0x7E => { // SET VERBOSITY
-		    println!("SET VERBOSITY <<{}", value);
+		    println!("SET VERBOSITY << {}", value);
 		    self.verbosity = value;
 		},
                 _ => implemented = false,
             }
-
             if !implemented {
-                println!("<<{} not implemented>>",
-                    opcode_name(self.opcode));
-                self.quit = true;
+                println!("<<{}({:#04x}) not implemented>>",
+                    opcode_name(self.opcode), self.opcode);
+                self.opcode = OPCODE_NOP;
+                // self.quit = true;
             } else if self.trace
                     && self.opcode != OPCODE_NOP
                     && self.opcode != 0x01
                     && self.opcode != 0x0d
                     && (self.opcode != 0x0c || self.io_byte_count == 1) {
-                println!("<<{}({:02x}) -> {}>>",
+                println!("<< {} (0x{:02X}) -> {} >>",
                     opcode_name(self.opcode), value, self.fs.get_last_error());
             }
 
@@ -271,9 +286,14 @@ impl Machine for Mbc2Machine {
 
             if self.con.status() {
                 let mut ch = self.con.read();
-                if ch == 3 { // Control C
-                    self.quit = true;
-                } else if ch == 127 { // Backspace
+                if ch == 0x1F { // ^_ (Control Underline)
+                    ch = self.con.read();
+                    if  ch == 0x1F { // ^_^_
+                        println!("\nExit Z80-MBC2");
+                        // self.con.put( b'\n');
+                        self.quit = true; // Exit emulation
+                    }
+                } else if ch == 0x7F { // Backspace key sends RUB
                     ch = 8
                 }
                 self.last_rx_is_empty = false;
@@ -306,7 +326,7 @@ impl Machine for Mbc2Machine {
                     //                   X  X  X  1  X  X  X  X    CP/M warm boot message enabled
                     //
                     // NOTE: Currently only D0-D4 are used
-                    let mut sysflags: u8 = 0b0010;
+                    let mut sysflags: u8 = 0b0010; // RTC found
                     if self.con.status() {
                         sysflags += 0b0100;
                     }
@@ -316,7 +336,7 @@ impl Machine for Mbc2Machine {
                     if self.cpm_warm_boot {
                         sysflags += 0b1_0000;
                     }
-		    // sysflags += 0b100_0000; // debug 256kBytes!
+		    sysflags += 0b1000_0000; // debug 512kBytes!
                     sysflags
                 },
                 0x84 => {
@@ -387,50 +407,55 @@ impl Machine for Mbc2Machine {
                         0
                     }
                 },
-		0xA0 => { // SIOA RxD
-		    println!("SIOA RxD");
-		    0xff
-		},
-		0xA1 => { // SIOB RxD
-		    println!("SIOA RxD");
-		    0xff
-		},
-		0xA2 => { // SIOA RxSTAT
-		    println!("SIOA RxSTAT");
-		    0x0
-		},
-		0xA3 => { // SIOB RxSTAT
-		    println!("SIOB RxSTAT");
-		    0x0
-		},
-		0xA4 => { // SIOA TxSTAT
-		    println!("SIOA TxSTAT");
-		    0x0
-		},
-		0xA5 => { // SIOB TxSTAT
-		println!("SIOB TxSTAT");
-		    0x0
-		},
-		0xFE => { // GET VERBOSITY
-		    println!("GET VERBOSITY");
-		    let value = self.verbosity;
-		    value
-		},
+                0x8B => { // RX AVAIL
+                    if self.con.status() { 1 } else { 0 }
+                },
+                0xA0 => { // SIOA RxD
+                    println!("SIOA RxD");
+                    0xff
+                },
+                0xA1 => { // SIOB RxD
+                    println!("SIOB RxD");
+                    0xff
+                },
+                0xA2 => { // SIOA RxSTAT
+                    println!("SIOA RxSTAT");
+                    0x0
+                },
+                0xA3 => { // SIOB RxSTAT
+                    println!("SIOB RxSTAT");
+                    0x0
+                },
+                0xA4 => { // SIOA TxSTAT
+                    println!("SIOA TxSTAT");
+                    0x0
+                },
+                0xA5 => { // SIOB TxSTAT
+                    println!("SIOB TxSTAT");
+                    0x0
+                },
+                0xFE => { // GET VERBOSITY
+                    println!("GET VERBOSITY");
+                    let value = self.verbosity;
+                    value
+                },
                 _ => {
+                    println!("UNKNOWN");
                     implemented = false;
                     0
                 }
             };
 
             if !implemented {
-                println!("<<{} not implemented>>",
-                    opcode_name(self.opcode));
-                self.quit = true;
+                println!("<<{}({:#04x}) not implemented>>",
+                    opcode_name(self.opcode), self.opcode);
+                self.opcode = OPCODE_NOP;
+                // self.quit = true;
             } else if self.trace
                     && self.opcode != OPCODE_NOP
                     && self.opcode != 0x83
                     && (self.opcode != 0x86 || self.io_byte_count == 1) {
-                println!("<<{} -> {:02x}, {}>>",
+                println!("<<{} -> {:#04x}, {}>>",
                 opcode_name(self.opcode), value, self.fs.get_last_error());
             }
             value
@@ -441,8 +466,8 @@ impl Machine for Mbc2Machine {
 fn opcode_name(opcode: u8) -> &'static str {
     match opcode {
         0x00 => "USER LED",
-
         0x01 => "SERIAL TX",
+
         0x03 => "GPIOA W",
         0x04 => "GPIOB W",
         0x05 => "IODIRA W",
@@ -459,10 +484,13 @@ fn opcode_name(opcode: u8) -> &'static str {
         0x10 => "SETOPT",
         0x11 => "SETSPP",
         0x12 => "WRSPP",
+        0x13 => "SETVECTOR",
+
         0x20 => "SIOA TxD",
         0x21 => "SIOB TxD",
         0x22 => "SIOA CTRL",
         0x23 => "SIOA CTRL",
+
         0x7E => "SET VERBOSITY",
 
         0x80 => "USER KEY",
@@ -476,12 +504,15 @@ fn opcode_name(opcode: u8) -> &'static str {
         0x88 => "ATXBUFF",
         0x89 => "SYSIRQ",
         0x8A => "GETSPP",
+        0x8B => "RX AVAIL",
+
         0xA0 => "SIOA RxD",
         0xA1 => "SIOB RxD",
         0xA2 => "SIOA RxSTAT",
         0xA3 => "SIOB RxSTAT",
         0xA4 => "SIOA TxSTAT",
         0xA5 => "SIOB TxSTAT",
+
         0xFE => "GET VERBOSITY",
         0xFF => "NOP",
         _ => "UNKNOWN"
